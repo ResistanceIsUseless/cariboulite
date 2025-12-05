@@ -62,6 +62,7 @@
 #include <linux/wait.h>
 #include <linux/poll.h>
 #include <linux/init.h>
+#include <linux/vmalloc.h>
 
 #include "smi_stream_dev.h"
 
@@ -1050,7 +1051,12 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
     }
 
     // Create sysfs entries with "smi-stream-dev"
+#if defined(HAVE_CLASS_WITHOUT_OWNER) && HAVE_CLASS_WITHOUT_OWNER
+    smi_stream_class = class_create(DEVICE_NAME);
+#else
     smi_stream_class = class_create(THIS_MODULE, DEVICE_NAME);
+#endif
+
     ptr_err = smi_stream_class;
     if (IS_ERR(ptr_err))
     {
@@ -1102,20 +1108,25 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
 *
 ***************************************************************************/
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+static void smi_stream_dev_remove(struct platform_device *pdev)
+#else
 static int smi_stream_dev_remove(struct platform_device *pdev)
+#endif
 {
     //if (inst->reader_thread != NULL) kthread_stop(inst->reader_thread);
-    //inst->reader_thread = NULL;	
-    
+    //inst->reader_thread = NULL;
+
     device_destroy(smi_stream_class, smi_stream_devid);
     class_destroy(smi_stream_class);
     cdev_del(&smi_stream_cdev);
     unregister_chrdev_region(smi_stream_devid, 1);
 
     dev_info(inst->dev, DRIVER_NAME": smi-stream dev removed");
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 11, 0)
     return 0;
-}
-
+#endif
+}   
 /****************************************************************************
 *
 *   Register the driver with device tree

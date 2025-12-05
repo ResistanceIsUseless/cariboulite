@@ -38,6 +38,7 @@
 #define _SMI_STREAM_DEV_H_
 
 #include <linux/ioctl.h>
+#include <linux/version.h>
 
 #ifndef __KERNEL__
 	#include <stdint.h>

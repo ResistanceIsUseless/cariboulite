@@ -25,6 +25,20 @@ find_path(
 message(STATUS "Kernel release: ${KERNEL_RELEASE}")
 message(STATUS "Kernel headers: ${KERNELHEADERS_DIR}")
 
+# Check kernel version for class_create API change (changed in 6.4)
+string(REGEX MATCH "^([0-9]+)\\.([0-9]+)" KERNEL_VERSION_MATCH ${KERNEL_RELEASE})
+set(KERNEL_MAJOR ${CMAKE_MATCH_1})
+set(KERNEL_MINOR ${CMAKE_MATCH_2})
+
+# Kernel 6.4+ uses class_create without owner parameter
+if((KERNEL_MAJOR GREATER 6) OR ((KERNEL_MAJOR EQUAL 6) AND (KERNEL_MINOR GREATER_EQUAL 4)))
+    set(HAVE_CLASS_WITHOUT_OWNER 1)
+else()
+    set(HAVE_CLASS_WITHOUT_OWNER 0)
+endif()
+
+message(STATUS "HAVE_CLASS_WITHOUT_OWNER: ${HAVE_CLASS_WITHOUT_OWNER}")
+
 function(compile_module obj)
     set(TARGET_NAME ${obj})
     add_custom_target(${TARGET_NAME} ALL cp -f ${CMAKE_CURRENT_SOURCE_DIR}/*.c ${CMAKE_CURRENT_SOURCE_DIR}/*.h ${CMAKE_CURRENT_BINARY_DIR}/
@@ -45,7 +59,7 @@ function(compile_module obj)
         #COMMAND echo "MY_CFLAGS += -g -DDEBUG" >> ${CMAKE_CURRENT_BINARY_DIR}/Makefile
         #COMMAND echo "ccflags-y += -g -DDEBUG" >> ${CMAKE_CURRENT_BINARY_DIR}/Makefile
         #COMMAND echo "CC += -g -DDEBUG" >> ${CMAKE_CURRENT_BINARY_DIR}/Makefile
-        COMMAND echo "ccflags-y += -O2 -DMODULE -D__KERNEL__" >> ${CMAKE_CURRENT_BINARY_DIR}/Makefile
+        COMMAND echo "ccflags-y += -O2 -DMODULE -D__KERNEL__ -DHAVE_CLASS_WITHOUT_OWNER=${HAVE_CLASS_WITHOUT_OWNER}" >> ${CMAKE_CURRENT_BINARY_DIR}/Makefile
         COMMAND echo "${obj}-objs:=${depend_objlist}" >> ${CMAKE_CURRENT_BINARY_DIR}/Makefile
         #COMMAND make -C ${KERNELHEADERS_DIR} M=${CMAKE_CURRENT_BINARY_DIR} modules EXTRA_CFLAGS="-g"
         COMMAND make -C ${KERNELHEADERS_DIR} M=${CMAKE_CURRENT_BINARY_DIR} modules
